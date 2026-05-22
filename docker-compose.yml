@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: website-next
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=[IP_ADDRESS]
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=[PASSWORD]
+      - DB_NAME=cs2_server
+      - JWT_SECRET=[OAUTH_CLIENT_SECRET]
+    restart: unless-stopped

@@ -1,0 +1,161 @@
+import { getSession } from '@/lib/auth';
+import { getKnifeTypes, getSkinsFromJson, getWeaponsFromArray } from '@/lib/utils';
+import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
+import Link from 'next/link';
+import { LogIn, LogOut, Settings2, Globe } from 'lucide-react';
+import { TeamSection } from '@/components/TeamSection';
+import { getDictionary } from '@/lib/i18n';
+import { cookies } from 'next/headers';
+import { changeLocale } from '@/app/actions';
+import { PlayerSkin, PlayerKnife } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const steamid = await getSession();
+  const locale = (await cookies()).get('locale')?.value || 'en';
+  const t = getDictionary(locale);
+
+  // Load datasets based on locale
+  const weapons = getWeaponsFromArray(locale);
+  const skins = getSkinsFromJson(locale);
+  const knifes = getKnifeTypes(locale);
+
+  let ctSkins: Record<number, PlayerSkin> = {};
+  let tSkins: Record<number, PlayerSkin> = {};
+  let ctKnife: PlayerKnife | null = null;
+  let tKnife: PlayerKnife | null = null;
+
+  if (steamid) {
+    try {
+      const [skinsRows] = await pool.query<RowDataPacket[]>(
+        `SELECT weapon_defindex, weapon_team, weapon_paint_id, weapon_wear, weapon_seed
+         FROM wp_player_skins
+         WHERE steamid = ?`,
+        [steamid]
+      );
+
+      for (const row of skinsRows) {
+        if (row.weapon_team === 2) {
+          ctSkins[row.weapon_defindex] = {
+            weapon_paint_id: row.weapon_paint_id,
+            weapon_wear: row.weapon_wear,
+            weapon_seed: row.weapon_seed,
+          };
+        } else if (row.weapon_team === 3) {
+          tSkins[row.weapon_defindex] = {
+            weapon_paint_id: row.weapon_paint_id,
+            weapon_wear: row.weapon_wear,
+            weapon_seed: row.weapon_seed,
+          };
+        }
+      }
+
+      const [knifeRows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM wp_player_knife WHERE steamid = ?",
+        [steamid]
+      );
+
+      for (const row of knifeRows) {
+        if (row.weapon_team === 2) {
+          ctKnife = { knife: row.knife, weapon_team: row.weapon_team };
+        } else if (row.weapon_team === 3) {
+          tKnife = { knife: row.knife, weapon_team: row.weapon_team };
+        }
+      }
+    } catch (err) {
+      console.error("Database error:", err);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-neutral-950 text-neutral-50 p-4 md:p-8 selection:bg-rose-500/30 font-sans">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-3xl bg-neutral-900/50 border border-neutral-800 backdrop-blur-md">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-rose-400 to-orange-400 bg-clip-text text-transparent">
+              {t.title}
+            </h1>
+            <p className="text-neutral-400 font-medium mt-1">{t.subtitle}</p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <form action={async () => {
+              'use server';
+              await changeLocale(locale === 'en' ? 'pt-BR' : 'en');
+            }}>
+              <button type="submit" className="flex items-center gap-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium rounded-xl transition-colors text-sm">
+                <Globe className="w-4 h-4" />
+                {locale === 'en' ? 'PT-BR' : 'EN'}
+              </button>
+            </form>
+
+            {!steamid ? (
+              <Link
+                href="/api/auth/steam"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 hover:bg-white text-neutral-900 font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
+              >
+                <LogIn className="w-5 h-5" />
+                {t.signIn}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="px-4 py-2 rounded-lg bg-neutral-800/50 border border-neutral-700 text-sm font-medium">
+                  {steamid}
+                </div>
+                <Link
+                  href="/api/auth/logout"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-xl transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {t.logout}
+                </Link>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Content */}
+        {!steamid ? (
+          <div className="flex flex-col items-center justify-center py-32 text-center space-y-6">
+            <div className="w-24 h-24 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center mb-4">
+              <Settings2 className="w-10 h-10 text-neutral-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-neutral-300">{t.authRequired}</h2>
+            <p className="text-neutral-500 max-w-md">
+              {t.authDesc}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-12 pb-20">
+            {/* CT Section */}
+            <TeamSection
+              teamId={2}
+              teamName={t.teamCT}
+              customizedSkins={ctSkins}
+              knife={ctKnife}
+              weapons={weapons}
+              skins={skins}
+              knifes={knifes}
+              t={t}
+            />
+
+            {/* T Section */}
+            <TeamSection
+              teamId={3}
+              teamName={t.teamT}
+              customizedSkins={tSkins}
+              knife={tKnife}
+              weapons={weapons}
+              skins={skins}
+              knifes={knifes}
+              t={t}
+            />
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
