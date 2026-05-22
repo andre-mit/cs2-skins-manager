@@ -52,12 +52,18 @@ export async function GET(request: Request) {
           maxAge: 30 * 24 * 60 * 60,
         });
 
-        return NextResponse.redirect(new URL('/', request.url));
+        const host = request.headers.get('x-forwarded-host') || url.host;
+        const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+        return NextResponse.redirect(`${baseUrl}/`);
       }
     }
   } catch (err) {
     console.error('Error verifying Steam OpenID', err);
   }
 
-  return NextResponse.redirect(new URL('/?error=auth_failed', request.url));
+  const host = request.headers.get('x-forwarded-host') || url.host;
+  const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+  return NextResponse.redirect(`${baseUrl}/?error=auth_failed`);
 }

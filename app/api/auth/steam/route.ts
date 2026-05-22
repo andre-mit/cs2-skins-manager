@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const baseUrl = `${url.protocol}//${url.host}`;
+  const host = request.headers.get('x-forwarded-host') || url.host;
+  const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
   const returnTo = `${baseUrl}/api/auth/steam/return`;
 
   const steamOpenIdUrl = new URL('https://steamcommunity.com/openid/login');
