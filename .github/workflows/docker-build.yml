@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
     paths:
       - '/**'
       - '.github/workflows/docker-build.yml'
@@ -47,4 +48,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
-          
