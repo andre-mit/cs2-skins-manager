@@ -4,10 +4,10 @@ on:
   push:
     branches:
       - main
-      - master
-    paths:
-      - '/**'
-      - '.github/workflows/docker-build.yml'
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'docker-compose.yml'
   workflow_dispatch:
 
 env:
