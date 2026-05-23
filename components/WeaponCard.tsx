@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { Settings, Loader2, Search } from 'lucide-react';
-import { updateSkin } from '@/app/actions';
-import { Dictionary, KnifeData, PlayerKnife, PlayerSkin, SkinData, WeaponData } from '@/lib/types';
+import { updateSkin, updateAgent, updateGlove, updateMusic, updatePin, removeItem } from '@/app/actions';
+import { Dictionary, KnifeData, PlayerKnife, PlayerSkin, SkinData, WeaponData, AgentData, GloveData, PlayerAgent, PlayerGlove } from '@/lib/types';
 
 interface WeaponCardProps {
-  type: 'knife' | 'weapon';
+  type: 'knife' | 'weapon' | 'agent' | 'glove' | 'music' | 'pin';
   defindex: number;
-  items: Record<number, SkinData> | Record<number, KnifeData>;
-  selectedItem: PlayerSkin | PlayerKnife | null;
+  items: any;
+  selectedItem: any;
   defaultWeapon?: WeaponData;
   teamId: number;
   t: Dictionary;
@@ -22,7 +22,15 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
 
   // Local state for modal
   const [selectedId, setSelectedId] = useState<string>(
-    type === 'knife' && selectedItem && 'knife' in selectedItem
+    type === 'agent' && selectedItem && 'agent' in selectedItem
+      ? selectedItem.agent
+      : type === 'glove' && selectedItem && 'weapon_paint_id' in selectedItem
+      ? `${selectedItem.weapon_defindex}-${selectedItem.weapon_paint_id}`
+      : type === 'music' && selectedItem && 'music_id' in selectedItem
+      ? String(selectedItem.music_id)
+      : type === 'pin' && selectedItem && 'id' in selectedItem
+      ? String(selectedItem.id)
+      : type === 'knife' && selectedItem && 'knife' in selectedItem
       ? Object.keys(items).find(k => items[k as any].weapon_name === selectedItem.knife) || Object.keys(items)[0]
       : selectedItem && 'weapon_paint_id' in selectedItem ? String(selectedItem.weapon_paint_id) : "0"
   );
@@ -36,20 +44,99 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
 
   const handleSave = () => {
     startTransition(() => {
-      const forma = type === 'knife' ? `knife-${selectedId}` : `${defindex}-${selectedId}`;
-      updateSkin(forma, wear, seed, teamId);
+      if (type === 'agent') {
+        updateAgent(selectedId, teamId);
+      } else if (type === 'glove') {
+        updateGlove(selectedId, wear, seed, teamId);
+      } else if (type === 'music') {
+        updateMusic(parseInt(selectedId, 10), teamId);
+      } else if (type === 'pin') {
+        updatePin(parseInt(selectedId, 10), teamId);
+      } else {
+        const forma = type === 'knife' ? `knife-${selectedId}` : `${defindex}-${selectedId}`;
+        updateSkin(forma, wear, seed, teamId);
+      }
       setIsModalOpen(false);
     });
   };
 
-  const filteredItems = Object.entries(items || {}).filter(([_, item]: [string, SkinData | KnifeData]) => {
-    const name = type === 'knife' ? item.weapon_name : item.paint_name;
+  const handleRemove = () => {
+    startTransition(() => {
+      removeItem(type, defindex, teamId);
+      setIsModalOpen(false);
+    });
+  };
+
+  let currentItems = items || {};
+  if (type === 'agent') {
+    const agents = items as Record<string, AgentData>;
+    currentItems = Object.fromEntries(
+      Object.entries(agents).filter(([_, agent]) => agent.team === teamId)
+    );
+  }
+
+  const filteredItems = Object.entries(currentItems).filter(([_, item]: [string, any]) => {
+    const name = type === 'knife' ? item.weapon_name : type === 'agent' ? item.agent_name : item.name || item.paint_name;
     return name?.toLowerCase().includes(search.toLowerCase());
   });
 
   // Determine current display info
   let currentDisplay = null;
-  if (type === 'knife') {
+  if (type === 'agent') {
+    const agentId = selectedItem && 'agent' in selectedItem ? selectedItem.agent : null;
+    if (agentId && items[agentId]) {
+      currentDisplay = {
+        name: items[agentId].agent_name,
+        image: items[agentId].image_url || '/img/skins/default_agent.png'
+      };
+    } else {
+      currentDisplay = {
+        name: 'Default Agent',
+        image: '/img/skins/default_agent.png'
+      };
+    }
+  } else if (type === 'glove') {
+    const gloveId = selectedItem && 'weapon_defindex' in selectedItem ? selectedItem.weapon_defindex : null;
+    const paintId = selectedItem && 'weapon_paint_id' in selectedItem ? selectedItem.weapon_paint_id : null;
+    
+    if (gloveId && paintId && items[`${gloveId}-${paintId}`]) {
+      currentDisplay = {
+        name: items[`${gloveId}-${paintId}`].paint_name,
+        image: items[`${gloveId}-${paintId}`].image_url || '/img/skins/default_glove.png'
+      };
+    } else {
+      currentDisplay = {
+        name: 'Default Gloves',
+        image: '/img/skins/default_glove.png'
+      };
+    }
+  } else if (type === 'music') {
+    const musicId = selectedItem && 'music_id' in selectedItem ? selectedItem.music_id : null;
+    if (musicId && items[musicId]) {
+      currentDisplay = {
+        name: items[musicId].name,
+        image: items[musicId].image_url || '/img/skins/default_music.png'
+      };
+    } else {
+      currentDisplay = {
+        name: 'Default Music Kit',
+        image: '/img/skins/default_music.png'
+      };
+    }
+  } else if (type === 'pin') {
+    const pinId = selectedItem && 'id' in selectedItem ? selectedItem.id : null;
+    if (pinId && items[pinId]) {
+      currentDisplay = {
+        name: items[pinId].name,
+        image: items[pinId].image_url || '/img/skins/default_pin.png'
+      };
+    } else {
+      currentDisplay = {
+        name: 'Default Pin',
+        image: '/img/skins/default_pin.png'
+      };
+    }
+  } else if (type === 'knife') {
     const knifeId = selectedItem && 'knife' in selectedItem ? Object.keys(items).find(k => items[k as any].weapon_name === selectedItem.knife) : null;
     if (knifeId && items[knifeId as any]) {
       currentDisplay = {
@@ -107,7 +194,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
           <div className="font-semibold text-neutral-200 truncate px-2">
             {currentDisplay.name}
           </div>
-          {type === 'weapon' && selectedItem && 'weapon_wear' in selectedItem && (
+          {(type === 'weapon' || type === 'glove') && selectedItem && 'weapon_wear' in selectedItem && (
             <div className="mt-2 flex items-center justify-center gap-2 text-xs text-neutral-500">
               <span className="bg-neutral-800 px-2 py-0.5 rounded-md">W: {selectedItem.weapon_wear}</span>
               <span className="bg-neutral-800 px-2 py-0.5 rounded-md">S: {selectedItem.weapon_seed}</span>
@@ -127,7 +214,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-200">
             <div className="p-6 border-b border-neutral-800 flex-shrink-0">
               <h3 className="text-xl font-bold text-white">
-                {type === 'knife' ? 'Knife Settings' : currentDisplay.weaponName}
+                {type === 'knife' ? 'Knife Settings' : type === 'agent' ? 'Agent Settings' : type === 'glove' ? 'Glove Settings' : type === 'music' ? 'Music Kit Settings' : type === 'pin' ? 'Pin Settings' : currentDisplay.weaponName}
               </h3>
             </div>
             
@@ -146,7 +233,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
-                  {filteredItems.map(([id, item]: [string, SkinData | KnifeData]) => (
+                  {filteredItems.map(([id, item]: [string, any]) => (
                     <button
                       key={id}
                       onClick={() => setSelectedId(id)}
@@ -157,17 +244,17 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
                       }`}
                     >
                       {item.image_url && (
-                        <img src={item.image_url} alt={item.paint_name || item.weapon_name} className="w-full h-16 object-contain mb-2 drop-shadow-lg" loading="lazy" />
+                        <img src={item.image_url} alt={item.paint_name || item.weapon_name || item.agent_name || item.name} className="w-full h-16 object-contain mb-2 drop-shadow-lg" loading="lazy" />
                       )}
                       <span className="text-xs font-semibold truncate w-full text-center">
-                        {item.paint_name}
+                        {type === 'agent' ? item.agent_name : item.name || item.paint_name}
                       </span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {type === 'weapon' && (
+              {(type === 'weapon' || type === 'glove') && (
                 <div className="space-y-4 pt-4 border-t border-neutral-800">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-neutral-400">Preset {t.wear}</label>
@@ -214,6 +301,15 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
             </div>
             
             <div className="p-4 bg-neutral-950/50 border-t border-neutral-800 flex justify-end gap-3 flex-shrink-0">
+              {selectedItem && (
+                <button 
+                  onClick={handleRemove}
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-xl font-medium text-red-400 hover:text-white hover:bg-red-500/20 transition-colors mr-auto"
+                >
+                  Remove
+                </button>
+              )}
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="px-5 py-2.5 rounded-xl font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"

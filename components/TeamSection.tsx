@@ -4,20 +4,28 @@ import { useState } from 'react';
 import { WeaponCard } from './WeaponCard';
 import { AddWeaponModal } from './AddWeaponModal';
 import { Plus } from 'lucide-react';
-import { SkinData, WeaponData, KnifeData, PlayerSkin, PlayerKnife, Dictionary } from '@/lib/types';
+import { SkinData, WeaponData, KnifeData, AgentData, GloveData, MusicData, PinData, PlayerSkin, PlayerKnife, PlayerAgent, PlayerGlove, PlayerMusic, PlayerPin, Dictionary } from '@/lib/types';
 
 interface TeamSectionProps {
   teamId: number;
   teamName: string;
   customizedSkins: Record<number, PlayerSkin>;
   knife: PlayerKnife | null;
+  agent: PlayerAgent | null;
+  glove: PlayerGlove | null;
+  music: PlayerMusic | null;
+  pin: PlayerPin | null;
   weapons: Record<number, WeaponData>;
   skins: Record<number, Record<number, SkinData>>;
   knifes: Record<number, KnifeData>;
+  agents: Record<string, AgentData>;
+  gloves: Record<string, GloveData>;
+  musics: Record<number, MusicData>;
+  pins: Record<number, PinData>;
   t: Dictionary;
 }
 
-export function TeamSection({ teamId, teamName, customizedSkins, knife, weapons, skins, knifes, t }: TeamSectionProps) {
+export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, glove, music, pin, weapons, skins, knifes, agents, gloves, musics, pins, t }: TeamSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
 
   return (
@@ -41,6 +49,42 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, weapons,
           defindex={0}
           items={knifes}
           selectedItem={knife}
+          teamId={teamId}
+          t={t}
+        />
+
+        <WeaponCard 
+          type="glove"
+          defindex={0}
+          items={gloves}
+          selectedItem={glove}
+          teamId={teamId}
+          t={t}
+        />
+
+        <WeaponCard 
+          type="agent"
+          defindex={0}
+          items={agents}
+          selectedItem={agent}
+          teamId={teamId}
+          t={t}
+        />
+
+        <WeaponCard 
+          type="music"
+          defindex={0}
+          items={musics}
+          selectedItem={music}
+          teamId={teamId}
+          t={t}
+        />
+
+        <WeaponCard 
+          type="pin"
+          defindex={0}
+          items={pins}
+          selectedItem={pin}
           teamId={teamId}
           t={t}
         />

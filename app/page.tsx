@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/auth';
-import { getKnifeTypes, getSkinsFromJson, getWeaponsFromArray } from '@/lib/utils';
+import { getKnifeTypes, getSkinsFromJson, getWeaponsFromArray, getAgentsFromJson, getGlovesFromJson, getMusicFromJson, getPinsFromJson } from '@/lib/utils';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import { TeamSection } from '@/components/TeamSection';
 import { getDictionary } from '@/lib/i18n';
 import { cookies } from 'next/headers';
 import { changeLocale } from '@/app/actions';
-import { PlayerSkin, PlayerKnife } from '@/lib/types';
+import { PlayerSkin, PlayerKnife, PlayerAgent, PlayerGlove, PlayerMusic, PlayerPin } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +21,23 @@ export default async function Home() {
   const weapons = getWeaponsFromArray(locale);
   const skins = getSkinsFromJson(locale);
   const knifes = getKnifeTypes(locale);
+  const agentsDict = getAgentsFromJson(locale);
+  const glovesDict = getGlovesFromJson(locale);
+  const musicDict = getMusicFromJson(locale);
+  const pinsDict = getPinsFromJson(locale);
 
   let ctSkins: Record<number, PlayerSkin> = {};
   let tSkins: Record<number, PlayerSkin> = {};
   let ctKnife: PlayerKnife | null = null;
   let tKnife: PlayerKnife | null = null;
+  let ctAgent: PlayerAgent | null = null;
+  let tAgent: PlayerAgent | null = null;
+  let ctGlove: PlayerGlove | null = null;
+  let tGlove: PlayerGlove | null = null;
+  let ctMusic: PlayerMusic | null = null;
+  let tMusic: PlayerMusic | null = null;
+  let ctPin: PlayerPin | null = null;
+  let tPin: PlayerPin | null = null;
 
   if (steamid) {
     try {
@@ -63,6 +75,64 @@ export default async function Home() {
         } else if (row.weapon_team === 3) {
           tKnife = { knife: row.knife, weapon_team: row.weapon_team };
         }
+      }
+
+      const [agentRows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM wp_player_agents WHERE steamid = ?",
+        [steamid]
+      );
+
+      if (agentRows.length > 0) {
+        const row = agentRows[0];
+        if (row.agent_ct) ctAgent = { agent: row.agent_ct, weapon_team: 2 };
+        if (row.agent_t) tAgent = { agent: row.agent_t, weapon_team: 3 };
+      }
+
+      const [gloveRows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM wp_player_gloves WHERE steamid = ?",
+        [steamid]
+      );
+
+      for (const row of gloveRows) {
+        if (row.weapon_team === 2) {
+          const skin = ctSkins[row.weapon_defindex];
+          ctGlove = { 
+            weapon_defindex: row.weapon_defindex, 
+            weapon_paint_id: skin ? skin.weapon_paint_id : 0, 
+            weapon_wear: skin ? skin.weapon_wear : 0, 
+            weapon_seed: skin ? skin.weapon_seed : 0, 
+            weapon_team: row.weapon_team 
+          };
+        } else if (row.weapon_team === 3) {
+          const skin = tSkins[row.weapon_defindex];
+          tGlove = { 
+            weapon_defindex: row.weapon_defindex, 
+            weapon_paint_id: skin ? skin.weapon_paint_id : 0, 
+            weapon_wear: skin ? skin.weapon_wear : 0, 
+            weapon_seed: skin ? skin.weapon_seed : 0, 
+            weapon_team: row.weapon_team 
+          };
+        }
+      }
+
+      const [musicRows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM wp_player_music WHERE steamid = ?",
+        [steamid]
+      );
+
+      for (const row of musicRows) {
+        if (row.weapon_team === 2) ctMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
+        else if (row.weapon_team === 3) tMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
+      }
+
+      const [pinRows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM wp_player_pins WHERE steamid = ?",
+        [steamid]
+      );
+
+      for (const row of pinRows) {
+        if (row.weapon_team === 2) ctPin = { id: row.id, weapon_team: row.weapon_team };
+        else if (row.weapon_team === 3) tPin = { id: row.id, weapon_team: row.weapon_team };
       }
     } catch (err) {
       console.error("Database error:", err);
@@ -136,9 +206,17 @@ export default async function Home() {
               teamName={t.teamCT}
               customizedSkins={ctSkins}
               knife={ctKnife}
+              agent={ctAgent}
+              glove={ctGlove}
+              music={ctMusic}
+              pin={ctPin}
               weapons={weapons}
               skins={skins}
               knifes={knifes}
+              agents={agentsDict}
+              gloves={glovesDict}
+              musics={musicDict}
+              pins={pinsDict}
               t={t}
             />
 
@@ -148,9 +226,17 @@ export default async function Home() {
               teamName={t.teamT}
               customizedSkins={tSkins}
               knife={tKnife}
+              agent={tAgent}
+              glove={tGlove}
+              music={tMusic}
+              pin={tPin}
               weapons={weapons}
               skins={skins}
               knifes={knifes}
+              agents={agentsDict}
+              gloves={glovesDict}
+              musics={musicDict}
+              pins={pinsDict}
               t={t}
             />
           </div>
