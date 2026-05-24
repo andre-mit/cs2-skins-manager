@@ -48,16 +48,18 @@ export async function GET(request: Request) {
         const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
         const isHttps = protocol === 'https';
 
-        (await cookies()).set('session', token, {
+        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
+        const response = NextResponse.redirect(`${baseUrl}/`);
+        
+        response.cookies.set('session', token, {
           httpOnly: true,
-          secure: isHttps || process.env.NODE_ENV === 'production',
+          secure: isHttps,
           sameSite: 'lax',
           path: '/',
           maxAge: 30 * 24 * 60 * 60,
         });
 
-        const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
-        return NextResponse.redirect(`${baseUrl}/`);
+        return response;
       }
     }
   } catch (err) {
