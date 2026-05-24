@@ -53,7 +53,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
   // --- Knife two-step state ---
   const [knifeStep, setKnifeStep] = useState<'model' | 'skin'>('model');
   const [selectedKnifeDefindex, setSelectedKnifeDefindex] = useState<number | null>(() => {
-    if (type === 'knife' && selectedItem && 'knife' in selectedItem) {
+    if (type === 'knife' && selectedItem?.knife) {
       // Find the defindex matching the selected knife weapon_name
       const match = Object.entries(items).find(([, k]: [string, CardItemData]) => k.weapon_name === selectedItem.knife);
       return match ? parseInt(match[0], 10) : null;
@@ -63,37 +63,37 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
 
   // Local state for modal
   const [selectedId, setSelectedId] = useState<string>(
-    type === 'agent' && selectedItem && 'agent' in selectedItem
-      ? selectedItem.agent
-      : type === 'glove' && selectedItem && 'weapon_paint_id' in selectedItem
+    type === 'agent' && selectedItem?.agent
+      ? (selectedItem.agent || "0")
+      : type === 'glove' && selectedItem?.weapon_paint_id !== undefined
         ? `${selectedItem.weapon_defindex}-${selectedItem.weapon_paint_id}`
-        : type === 'music' && selectedItem && 'music_id' in selectedItem
+        : type === 'music' && selectedItem?.music_id !== undefined
           ? String(selectedItem.music_id)
-          : type === 'pin' && selectedItem && 'id' in selectedItem
+          : type === 'pin' && selectedItem?.id !== undefined
             ? String(selectedItem.id)
-            : type === 'knife' && selectedItem && 'knife' in selectedItem
-              ? Object.keys(items).find(k => items[k as keyof typeof items]?.weapon_name === selectedItem.knife) || Object.keys(items)[0]
-              : selectedItem && 'weapon_paint_id' in selectedItem ? String(selectedItem.weapon_paint_id) : "0"
+            : type === 'knife' && selectedItem?.knife
+              ? (Object.keys(items).find(k => items[k as keyof typeof items]?.weapon_name === selectedItem.knife) || Object.keys(items)[0] || "0")
+              : selectedItem?.weapon_paint_id !== undefined ? String(selectedItem.weapon_paint_id) : "0"
   );
 
   const [wear, setWear] = useState<string>(
-    selectedItem && 'weapon_wear' in selectedItem ? selectedItem.weapon_wear.toFixed(2) : "0.00"
+    selectedItem?.weapon_wear !== undefined ? selectedItem.weapon_wear.toFixed(2) : "0.00"
   );
   const [seed, setSeed] = useState<string>(
-    selectedItem && 'weapon_seed' in selectedItem ? String(selectedItem.weapon_seed) : "0"
+    selectedItem?.weapon_seed !== undefined ? String(selectedItem.weapon_seed) : "0"
   );
 
   // --- StatTrak & NameTag state ---
   const [stattrak, setStattrak] = useState<boolean>(
-    selectedItem && 'weapon_stattrak' in selectedItem ? !!selectedItem.weapon_stattrak : false
+    selectedItem?.weapon_stattrak !== undefined ? !!selectedItem.weapon_stattrak : false
   );
   const [nametag, setNametag] = useState<string>(
-    selectedItem && 'weapon_nametag' in selectedItem && selectedItem.weapon_nametag ? selectedItem.weapon_nametag : ''
+    selectedItem?.weapon_nametag ? selectedItem.weapon_nametag : ''
   );
 
   // --- Sticker state ---
   const [stickers, setStickers] = useState<StickerSlot[]>(
-    selectedItem && 'weapon_stickers' in selectedItem && Array.isArray(selectedItem.weapon_stickers)
+    selectedItem?.weapon_stickers && Array.isArray(selectedItem.weapon_stickers)
       ? selectedItem.weapon_stickers
       : [...DEFAULT_STICKERS]
   );
@@ -156,9 +156,6 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
   // Determine current display info
   const currentDisplay = getDisplayInfo(type, selectedItem, items, defaultWeapon, defindex, knifeSkins);
 
-  // Get the weapon image URL for the sticker editor
-  const weaponImageUrl = currentDisplay.image;
-
   return (
     <>
       <div
@@ -173,7 +170,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
           {currentDisplay.image && (
             <Image
               src={currentDisplay.image}
-              alt={currentDisplay.name}
+              alt={currentDisplay.name || ""}
               width={200}
               height={100}
               className="max-w-full max-h-full object-contain drop-shadow-2xl transition-transform group-hover:scale-110"
@@ -212,15 +209,19 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
             </div>
           )}
           {/* Sticker indicators */}
-          {type === 'weapon' && selectedItem && 'weapon_stickers' in selectedItem && (
-            <div className="mt-2 flex items-center justify-center gap-1">
-              {selectedItem.weapon_stickers.filter((s: StickerSlot) => s.id > 0).length > 0 && (
-                <span className="text-[9px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
-                  {selectedItem.weapon_stickers.filter((s: StickerSlot) => s.id > 0).length} sticker(s)
-                </span>
-              )}
-            </div>
-          )}
+          {type === 'weapon' && (() => {
+            const stickersCount = selectedItem?.weapon_stickers?.filter((s: StickerSlot) => s.id > 0).length || 0;
+            if (stickersCount > 0) {
+              return (
+                <div className="mt-2 flex items-center justify-center gap-1">
+                  <span className="text-[9px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
+                    {stickersCount} sticker(s)
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {isPending && (
@@ -546,7 +547,6 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
               {type === 'weapon' && (
                 <div className="pt-4 border-t border-neutral-800">
                   <StickerEditor
-                    weaponImageUrl={weaponImageUrl}
                     stickers={stickers}
                     onChange={setStickers}
                     locale={locale}
@@ -591,7 +591,7 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
 // Helper to compute display info for the card thumbnail
 function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, items: Record<string | number, CardItemData>, defaultWeapon: WeaponData | undefined, defindex: number, knifeSkins?: Record<number, Record<number, SkinData>>) {
   if (type === 'agent') {
-    const agentId = selectedItem && 'agent' in selectedItem ? selectedItem.agent : null;
+    const agentId = selectedItem?.agent || null;
     if (agentId && items[agentId]) {
       return {
         name: items[agentId].agent_name,
@@ -603,8 +603,8 @@ function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, ite
   }
 
   if (type === 'glove') {
-    const gloveId = selectedItem && 'weapon_defindex' in selectedItem ? selectedItem.weapon_defindex : null;
-    const paintId = selectedItem && 'weapon_paint_id' in selectedItem ? selectedItem.weapon_paint_id : null;
+    const gloveId = selectedItem?.weapon_defindex || null;
+    const paintId = selectedItem?.weapon_paint_id || null;
     if (gloveId && paintId && items[`${gloveId}-${paintId}`]) {
       return {
         name: items[`${gloveId}-${paintId}`].paint_name,
@@ -616,7 +616,7 @@ function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, ite
   }
 
   if (type === 'music') {
-    const musicId = selectedItem && 'music_id' in selectedItem ? selectedItem.music_id : null;
+    const musicId = selectedItem?.music_id || null;
     if (musicId && items[musicId]) {
       return { name: items[musicId].name, image: items[musicId].image_url || '/img/skins/default_music.png', weaponName: undefined };
     }
@@ -624,7 +624,7 @@ function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, ite
   }
 
   if (type === 'pin') {
-    const pinId = selectedItem && 'id' in selectedItem ? selectedItem.id : null;
+    const pinId = selectedItem?.id || null;
     if (pinId && items[pinId]) {
       return { name: items[pinId].name, image: items[pinId].image_url || '/img/skins/default_pin.png', weaponName: undefined };
     }
@@ -632,13 +632,13 @@ function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, ite
   }
 
   if (type === 'knife') {
-    const knifeIdStr = selectedItem && 'knife' in selectedItem
+    const knifeIdStr = selectedItem?.knife
       ? Object.keys(items).find(k => items[k as keyof typeof items]?.weapon_name === selectedItem.knife)
       : null;
     const knifeId = knifeIdStr ? parseInt(knifeIdStr, 10) : null;
 
     // Check if there is a skin applied
-    if (knifeId && selectedItem && 'weapon_paint_id' in selectedItem && selectedItem.weapon_paint_id > 0) {
+    if (knifeId && selectedItem?.weapon_paint_id && selectedItem.weapon_paint_id > 0) {
       const skin = knifeSkins?.[knifeId]?.[selectedItem.weapon_paint_id];
       if (skin) {
         return {
@@ -661,7 +661,7 @@ function getDisplayInfo(type: string, selectedItem: SelectedItemData | null, ite
   }
 
   // weapon
-  if (selectedItem && 'weapon_paint_id' in selectedItem && items && selectedItem.weapon_paint_id !== undefined && items[selectedItem.weapon_paint_id]) {
+  if (selectedItem?.weapon_paint_id !== undefined && items[selectedItem.weapon_paint_id]) {
     const skin = items[selectedItem.weapon_paint_id];
     return {
       name: skin.paint_name,

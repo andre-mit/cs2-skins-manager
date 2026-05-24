@@ -235,7 +235,7 @@ export function getStickersFromJson(locale: string = 'en'): StickerData[] {
   const json = JSON.parse(data);
 
   return json.map((sticker: { id: string | number; name: string; image: string | null }) => ({
-    id: parseInt(sticker.id, 10),
+    id: parseInt(String(sticker.id), 10),
     name: sticker.name,
     image_url: sticker.image ? sticker.image.replace('https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/', '/img/skins/') : null,
   }));
