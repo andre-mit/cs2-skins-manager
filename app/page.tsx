@@ -1,13 +1,13 @@
 import { getSession } from '@/lib/auth';
-import { getKnifeTypes, getSkinsFromJson, getWeaponsFromArray, getAgentsFromJson, getGlovesFromJson, getMusicFromJson, getPinsFromJson } from '@/lib/utils';
+import { getKnifeTypes, getSkinsFromJson, getWeaponsFromArray, getAgentsFromJson, getGlovesFromJson, getMusicFromJson, getPinsFromJson, parseStickerString } from '@/lib/utils';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import Link from 'next/link';
-import { LogIn, LogOut, Settings2, Globe } from 'lucide-react';
+import { LogIn, LogOut, Settings2 } from 'lucide-react';
 import { TeamSection } from '@/components/TeamSection';
+import { LocaleSwitcher } from '@/components/LocaleSwitcher';
 import { getDictionary } from '@/lib/i18n';
 import { cookies } from 'next/headers';
-import { changeLocale } from '@/app/actions';
 import { PlayerSkin, PlayerKnife, PlayerAgent, PlayerGlove, PlayerMusic, PlayerPin } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +26,8 @@ export default async function Home() {
   const musicDict = getMusicFromJson(locale);
   const pinsDict = getPinsFromJson(locale);
 
-  let ctSkins: Record<number, PlayerSkin> = {};
-  let tSkins: Record<number, PlayerSkin> = {};
+  const ctSkins: Record<number, PlayerSkin> = {};
+  const tSkins: Record<number, PlayerSkin> = {};
   let ctKnife: PlayerKnife | null = null;
   let tKnife: PlayerKnife | null = null;
   let ctAgent: PlayerAgent | null = null;
@@ -42,25 +42,46 @@ export default async function Home() {
   if (steamid) {
     try {
       const [skinsRows] = await pool.query<RowDataPacket[]>(
-        `SELECT weapon_defindex, weapon_team, weapon_paint_id, weapon_wear, weapon_seed
+        `SELECT weapon_defindex, weapon_team, weapon_paint_id, weapon_wear, weapon_seed,
+                weapon_nametag, weapon_stattrak, weapon_stattrak_count,
+                weapon_sticker_0, weapon_sticker_1, weapon_sticker_2, weapon_sticker_3, weapon_sticker_4
          FROM wp_player_skins
          WHERE steamid = ?`,
         [steamid]
       );
 
+      const ctSkinsAll: Record<number, PlayerSkin> = {};
+      const tSkinsAll: Record<number, PlayerSkin> = {};
+
       for (const row of skinsRows) {
-        if (row.weapon_team === 2) {
-          ctSkins[row.weapon_defindex] = {
-            weapon_paint_id: row.weapon_paint_id,
-            weapon_wear: row.weapon_wear,
-            weapon_seed: row.weapon_seed,
-          };
-        } else if (row.weapon_team === 3) {
-          tSkins[row.weapon_defindex] = {
-            weapon_paint_id: row.weapon_paint_id,
-            weapon_wear: row.weapon_wear,
-            weapon_seed: row.weapon_seed,
-          };
+        const stickers = [
+          parseStickerString(row.weapon_sticker_0 || '0;0;0;0;0;0;0'),
+          parseStickerString(row.weapon_sticker_1 || '0;0;0;0;0;0;0'),
+          parseStickerString(row.weapon_sticker_2 || '0;0;0;0;0;0;0'),
+          parseStickerString(row.weapon_sticker_3 || '0;0;0;0;0;0;0'),
+          parseStickerString(row.weapon_sticker_4 || '0;0;0;0;0;0;0'),
+        ];
+
+        const skinData: PlayerSkin = {
+          weapon_paint_id: row.weapon_paint_id,
+          weapon_wear: row.weapon_wear,
+          weapon_seed: row.weapon_seed,
+          weapon_nametag: row.weapon_nametag || null,
+          weapon_stattrak: row.weapon_stattrak === 1,
+          weapon_stattrak_count: row.weapon_stattrak_count || 0,
+          weapon_stickers: stickers,
+        };
+
+        if (row.weapon_team === 3) {
+          ctSkinsAll[row.weapon_defindex] = skinData;
+          if (row.weapon_defindex < 500) {
+            ctSkins[row.weapon_defindex] = skinData;
+          }
+        } else if (row.weapon_team === 2) {
+          tSkinsAll[row.weapon_defindex] = skinData;
+          if (row.weapon_defindex < 500) {
+            tSkins[row.weapon_defindex] = skinData;
+          }
         }
       }
 
@@ -70,10 +91,33 @@ export default async function Home() {
       );
 
       for (const row of knifeRows) {
-        if (row.weapon_team === 2) {
-          ctKnife = { knife: row.knife, weapon_team: row.weapon_team };
-        } else if (row.weapon_team === 3) {
-          tKnife = { knife: row.knife, weapon_team: row.weapon_team };
+        // Find the defindex for this knife model to look up its skin
+        const knifesLocal = getKnifeTypes('en');
+        const knifeDefindexStr = Object.keys(knifesLocal).find(k => knifesLocal[parseInt(k, 10)].weapon_name === row.knife);
+        const knifeDefindex = knifeDefindexStr ? parseInt(knifeDefindexStr, 10) : 0;
+
+        if (row.weapon_team === 3) {
+          const skin = ctSkinsAll[knifeDefindex];
+          ctKnife = { 
+            knife: row.knife, 
+            weapon_team: row.weapon_team,
+            weapon_paint_id: skin?.weapon_paint_id || 0,
+            weapon_wear: skin?.weapon_wear || 0,
+            weapon_seed: skin?.weapon_seed || 0,
+            weapon_nametag: skin?.weapon_nametag,
+            weapon_stattrak: skin?.weapon_stattrak
+          };
+        } else if (row.weapon_team === 2) {
+          const skin = tSkinsAll[knifeDefindex];
+          tKnife = { 
+            knife: row.knife, 
+            weapon_team: row.weapon_team,
+            weapon_paint_id: skin?.weapon_paint_id || 0,
+            weapon_wear: skin?.weapon_wear || 0,
+            weapon_seed: skin?.weapon_seed || 0,
+            weapon_nametag: skin?.weapon_nametag,
+            weapon_stattrak: skin?.weapon_stattrak
+          };
         }
       }
 
@@ -84,8 +128,8 @@ export default async function Home() {
 
       if (agentRows.length > 0) {
         const row = agentRows[0];
-        if (row.agent_ct) ctAgent = { agent: row.agent_ct, weapon_team: 2 };
-        if (row.agent_t) tAgent = { agent: row.agent_t, weapon_team: 3 };
+        if (row.agent_ct) ctAgent = { agent: row.agent_ct, weapon_team: 3 };
+        if (row.agent_t) tAgent = { agent: row.agent_t, weapon_team: 2 };
       }
 
       const [gloveRows] = await pool.query<RowDataPacket[]>(
@@ -94,8 +138,8 @@ export default async function Home() {
       );
 
       for (const row of gloveRows) {
-        if (row.weapon_team === 2) {
-          const skin = ctSkins[row.weapon_defindex];
+        if (row.weapon_team === 3) {
+          const skin = ctSkinsAll[row.weapon_defindex];
           ctGlove = { 
             weapon_defindex: row.weapon_defindex, 
             weapon_paint_id: skin ? skin.weapon_paint_id : 0, 
@@ -103,8 +147,8 @@ export default async function Home() {
             weapon_seed: skin ? skin.weapon_seed : 0, 
             weapon_team: row.weapon_team 
           };
-        } else if (row.weapon_team === 3) {
-          const skin = tSkins[row.weapon_defindex];
+        } else if (row.weapon_team === 2) {
+          const skin = tSkinsAll[row.weapon_defindex];
           tGlove = { 
             weapon_defindex: row.weapon_defindex, 
             weapon_paint_id: skin ? skin.weapon_paint_id : 0, 
@@ -121,8 +165,8 @@ export default async function Home() {
       );
 
       for (const row of musicRows) {
-        if (row.weapon_team === 2) ctMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
-        else if (row.weapon_team === 3) tMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
+        if (row.weapon_team === 3) ctMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
+        else if (row.weapon_team === 2) tMusic = { music_id: row.music_id, weapon_team: row.weapon_team };
       }
 
       const [pinRows] = await pool.query<RowDataPacket[]>(
@@ -131,8 +175,8 @@ export default async function Home() {
       );
 
       for (const row of pinRows) {
-        if (row.weapon_team === 2) ctPin = { id: row.id, weapon_team: row.weapon_team };
-        else if (row.weapon_team === 3) tPin = { id: row.id, weapon_team: row.weapon_team };
+        if (row.weapon_team === 3) ctPin = { id: row.id, weapon_team: row.weapon_team };
+        else if (row.weapon_team === 2) tPin = { id: row.id, weapon_team: row.weapon_team };
       }
     } catch (err) {
       console.error("Database error:", err);
@@ -152,15 +196,7 @@ export default async function Home() {
           </div>
           
           <div className="flex items-center gap-4">
-            <form action={async () => {
-              'use server';
-              await changeLocale(locale === 'en' ? 'pt-BR' : 'en');
-            }}>
-              <button type="submit" className="flex items-center gap-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium rounded-xl transition-colors text-sm">
-                <Globe className="w-4 h-4" />
-                {locale === 'en' ? 'PT-BR' : 'EN'}
-              </button>
-            </form>
+            <LocaleSwitcher locale={locale} />
 
             {!steamid ? (
               <Link
@@ -202,7 +238,7 @@ export default async function Home() {
           <div className="space-y-12 pb-20">
             {/* CT Section */}
             <TeamSection
-              teamId={2}
+              teamId={3}
               teamName={t.teamCT}
               customizedSkins={ctSkins}
               knife={ctKnife}
@@ -217,12 +253,13 @@ export default async function Home() {
               gloves={glovesDict}
               musics={musicDict}
               pins={pinsDict}
+              locale={locale}
               t={t}
             />
 
             {/* T Section */}
             <TeamSection
-              teamId={3}
+              teamId={2}
               teamName={t.teamT}
               customizedSkins={tSkins}
               knife={tKnife}
@@ -237,6 +274,7 @@ export default async function Home() {
               gloves={glovesDict}
               musics={musicDict}
               pins={pinsDict}
+              locale={locale}
               t={t}
             />
           </div>

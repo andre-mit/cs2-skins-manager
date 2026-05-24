@@ -20,5 +20,18 @@
   "battleScarred": "Battle-Scarred",
   "selectWeapon": "Select Weapon",
   "selectSkin": "Select Skin",
-  "language": "Language"
+  "language": "Language",
+  "stickers": "Stickers",
+  "selectSticker": "Select Sticker",
+  "searchSticker": "Search sticker...",
+  "stickerSlot": "Slot",
+  "removeSticker": "Remove",
+  "stattrak": "StatTrak™",
+  "nametag": "Name Tag",
+  "nametagPlaceholder": "Enter name tag...",
+  "selectKnifeModel": "Select Knife Model",
+  "selectKnifeSkin": "Select Knife Skin",
+  "noSticker": "Empty",
+  "remove": "Remove",
+  "dragToPosition": "Drag sticker to position"
 }

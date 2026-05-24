@@ -16,16 +16,41 @@ export interface KnifeData {
   image_url: string | null;
 }
 
+export interface StickerSlot {
+  id: number;
+  schema: number;
+  x: number;
+  y: number;
+  wear: number;
+  scale: number;
+  rotation: number;
+}
+
+export interface StickerData {
+  id: number;
+  name: string;
+  image_url: string | null;
+}
+
 export interface PlayerSkin {
   weapon_paint_id: number;
   weapon_wear: number;
   weapon_seed: number;
+  weapon_nametag?: string | null;
+  weapon_stattrak?: boolean;
+  weapon_stattrak_count?: number;
+  weapon_stickers?: StickerSlot[];
 }
 
 export interface PlayerKnife {
   steamid?: string;
   knife: string;
   weapon_team: number;
+  weapon_paint_id?: number;
+  weapon_wear?: number;
+  weapon_seed?: number;
+  weapon_nametag?: string | null;
+  weapon_stattrak?: boolean;
 }
 
 export interface AgentData {

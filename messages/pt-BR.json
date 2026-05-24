@@ -20,5 +20,18 @@
   "battleScarred": "Veterana de Guerra",
   "selectWeapon": "Selecione a Arma",
   "selectSkin": "Selecione a Skin",
-  "language": "Idioma"
+  "language": "Idioma",
+  "stickers": "Adesivos",
+  "selectSticker": "Selecionar Adesivo",
+  "searchSticker": "Buscar adesivo...",
+  "stickerSlot": "Posição",
+  "removeSticker": "Remover",
+  "stattrak": "StatTrak™",
+  "nametag": "Etiqueta",
+  "nametagPlaceholder": "Digite a etiqueta...",
+  "selectKnifeModel": "Selecionar Modelo da Faca",
+  "selectKnifeSkin": "Selecionar Skin da Faca",
+  "noSticker": "Vazio",
+  "remove": "Remover",
+  "dragToPosition": "Arraste o adesivo para posicionar"
 }

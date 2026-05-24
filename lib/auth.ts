@@ -10,7 +10,7 @@ export async function getSession() {
   try {
     const { payload } = await jwtVerify(sessionCookie, JWT_SECRET);
     return payload.steamId as string;
-  } catch (err) {
+  } catch {
     return null;
   }
 }

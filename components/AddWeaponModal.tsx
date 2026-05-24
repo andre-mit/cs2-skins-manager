@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { updateSkin } from '@/app/actions';
 import { Loader2, Search } from 'lucide-react';
+import Image from 'next/image';
 import { SkinData, WeaponData, Dictionary } from '@/lib/types';
 
 interface AddWeaponModalProps {
@@ -26,10 +27,25 @@ export function AddWeaponModal({ onClose, teamId, weapons, skins, t }: AddWeapon
   const availableSkins = selectedWeaponDefindex ? skins[selectedWeaponDefindex] : null;
 
   const filteredSkins = availableSkins 
-    ? Object.entries(availableSkins).filter(([_, skin]: [string, SkinData]) => 
+    ? Object.entries(availableSkins).filter(([, skin]: [string, SkinData]) => 
         skin.paint_name.toLowerCase().includes(search.toLowerCase())
       )
     : [];
+
+  const CT_ONLY_WEAPONS = [3, 8, 10, 16, 27, 32, 34, 38, 60, 61];
+  const T_ONLY_WEAPONS = [4, 7, 11, 13, 17, 29, 30, 39];
+
+  // Filter out knives (defindex >= 500) and team-specific weapons from the weapon list
+  const filteredWeapons = Object.entries(weapons).filter(([defindexStr]) => {
+    const defindex = parseInt(defindexStr, 10);
+    if (defindex >= 500) return false;
+    
+    // teamId 3 is CT, teamId 2 is T
+    if (teamId === 3 && T_ONLY_WEAPONS.includes(defindex)) return false;
+    if (teamId === 2 && CT_ONLY_WEAPONS.includes(defindex)) return false;
+    
+    return true;
+  });
 
   const handleSave = () => {
     if (!selectedWeaponDefindex || !selectedSkinId) return;
@@ -61,7 +77,7 @@ export function AddWeaponModal({ onClose, teamId, weapons, skins, t }: AddWeapon
               }}
             >
               <option value="" disabled>{t.selectWeapon}</option>
-              {Object.entries(weapons).map(([defindex, weapon]: [string, WeaponData]) => {
+              {filteredWeapons.map(([defindex, weapon]: [string, WeaponData]) => {
                 const displayName = weapon.paint_name ? weapon.paint_name.split('|')[0].trim() : weapon.weapon_name;
                 return (
                   <option key={defindex} value={defindex}>{displayName}</option>
@@ -96,7 +112,7 @@ export function AddWeaponModal({ onClose, teamId, weapons, skins, t }: AddWeapon
                     }`}
                   >
                     {skin.image_url && (
-                      <img src={skin.image_url} alt={skin.paint_name} className="w-full h-16 object-contain mb-2 drop-shadow-lg" loading="lazy" />
+                      <Image src={skin.image_url} alt={skin.paint_name} width={128} height={64} className="w-full h-16 object-contain mb-2 drop-shadow-lg" loading="lazy" />
                     )}
                     <span className="text-xs font-semibold truncate w-full text-center">{skin.paint_name}</span>
                   </button>

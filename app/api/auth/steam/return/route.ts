@@ -44,16 +44,18 @@ export async function GET(request: Request) {
           .setExpirationTime('30d')
           .sign(JWT_SECRET);
 
+        const host = request.headers.get('x-forwarded-host') || url.host;
+        const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+        const isHttps = protocol === 'https';
+
         (await cookies()).set('session', token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
+          secure: isHttps || process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
           maxAge: 30 * 24 * 60 * 60,
         });
 
-        const host = request.headers.get('x-forwarded-host') || url.host;
-        const protocol = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
         const baseUrl = process.env.BASE_URL || `${protocol}://${host}`;
         return NextResponse.redirect(`${baseUrl}/`);
       }

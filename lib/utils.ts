@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { SkinData, WeaponData, KnifeData, AgentData, GloveData, MusicData, PinData } from './types';
+import { SkinData, WeaponData, KnifeData, AgentData, GloveData, MusicData, PinData, StickerSlot, StickerData } from './types';
 
 export function getSkinsFromJson(locale: string = 'en'): Record<number, Record<number, SkinData>> {
   const allowedLocales = ['en', 'pt-BR'];
@@ -199,4 +199,44 @@ export function getPinsFromJson(locale: string = 'en'): Record<number, PinData> 
   }
 
   return pins;
+}
+
+// --- Sticker helpers ---
+
+export function parseStickerString(s: string): StickerSlot {
+  const parts = s.split(';');
+  return {
+    id: parseInt(parts[0] || '0', 10),
+    schema: parseInt(parts[1] || '0', 10),
+    x: parseFloat(parts[2] || '0'),
+    y: parseFloat(parts[3] || '0'),
+    wear: parseFloat(parts[4] || '0'),
+    scale: parseFloat(parts[5] || '0'),
+    rotation: parseFloat(parts[6] || '0'),
+  };
+}
+
+export function serializeStickerSlot(slot: StickerSlot): string {
+  return `${slot.id};${slot.schema};${slot.x};${slot.y};${slot.wear};${slot.scale};${slot.rotation}`;
+}
+
+export function getStickersFromJson(locale: string = 'en'): StickerData[] {
+  const allowedLocales = ['en', 'pt-BR'];
+  const safeLocale = allowedLocales.includes(locale) ? locale : 'en';
+  
+  const fileName = `stickers_${safeLocale}.json`;
+  let filePath = path.join(process.cwd(), 'data', fileName);
+  
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(process.cwd(), 'data', 'stickers_en.json');
+  }
+
+  const data = fs.readFileSync(filePath, 'utf8');
+  const json = JSON.parse(data);
+
+  return json.map((sticker: { id: string | number; name: string; image: string | null }) => ({
+    id: parseInt(sticker.id, 10),
+    name: sticker.name,
+    image_url: sticker.image ? sticker.image.replace('https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/', '/img/skins/') : null,
+  }));
 }

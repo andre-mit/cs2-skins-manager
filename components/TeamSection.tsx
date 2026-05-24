@@ -22,10 +22,11 @@ interface TeamSectionProps {
   gloves: Record<string, GloveData>;
   musics: Record<number, MusicData>;
   pins: Record<number, PinData>;
+  locale: string;
   t: Dictionary;
 }
 
-export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, glove, music, pin, weapons, skins, knifes, agents, gloves, musics, pins, t }: TeamSectionProps) {
+export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, glove, music, pin, weapons, skins, knifes, agents, gloves, musics, pins, locale, t }: TeamSectionProps) {
   const [isAdding, setIsAdding] = useState(false);
 
   return (
@@ -50,6 +51,8 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
           items={knifes}
           selectedItem={knife}
           teamId={teamId}
+          knifeSkins={skins}
+          locale={locale}
           t={t}
         />
 
@@ -59,6 +62,7 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
           items={gloves}
           selectedItem={glove}
           teamId={teamId}
+          locale={locale}
           t={t}
         />
 
@@ -68,6 +72,7 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
           items={agents}
           selectedItem={agent}
           teamId={teamId}
+          locale={locale}
           t={t}
         />
 
@@ -77,6 +82,7 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
           items={musics}
           selectedItem={music}
           teamId={teamId}
+          locale={locale}
           t={t}
         />
 
@@ -86,6 +92,7 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
           items={pins}
           selectedItem={pin}
           teamId={teamId}
+          locale={locale}
           t={t}
         />
 
@@ -102,6 +109,7 @@ export function TeamSection({ teamId, teamName, customizedSkins, knife, agent, g
               selectedItem={selectedSkinInfo}
               defaultWeapon={defaultWeapon}
               teamId={teamId}
+              locale={locale}
               t={t}
             />
           );
