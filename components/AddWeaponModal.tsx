@@ -50,9 +50,9 @@ export function AddWeaponModal({ onClose, teamId, weapons, skins, t }: AddWeapon
   const handleSave = () => {
     if (!selectedWeaponDefindex || !selectedSkinId) return;
     
-    startTransition(() => {
+    startTransition(async () => {
       const forma = `${selectedWeaponDefindex}-${selectedSkinId}`;
-      updateSkin(forma, wear, seed, teamId);
+      await updateSkin(forma, wear, seed, teamId);
       onClose();
     });
   };

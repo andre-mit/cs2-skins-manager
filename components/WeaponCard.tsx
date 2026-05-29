@@ -103,30 +103,30 @@ export function WeaponCard({ type, defindex, items, selectedItem, defaultWeapon,
   const [knifeSearch, setKnifeSearch] = useState('');
 
   const handleSave = () => {
-    startTransition(() => {
+    startTransition(async () => {
       if (type === 'agent') {
-        updateAgent(selectedId, teamId);
+        await updateAgent(selectedId, teamId);
       } else if (type === 'glove') {
-        updateGlove(selectedId, wear, seed, teamId);
+        await updateGlove(selectedId, wear, seed, teamId);
       } else if (type === 'music') {
-        updateMusic(parseInt(selectedId, 10), teamId);
+        await updateMusic(parseInt(selectedId, 10), teamId);
       } else if (type === 'pin') {
-        updatePin(parseInt(selectedId, 10), teamId);
+        await updatePin(parseInt(selectedId, 10), teamId);
       } else if (type === 'knife') {
         const knifeDefindex = selectedKnifeDefindex || 0;
         const paintId = parseInt(selectedKnifePaintId, 10) || 0;
-        updateKnifeWithSkin(knifeDefindex, paintId, wear, seed, teamId, nametag || null, stattrak);
+        await updateKnifeWithSkin(knifeDefindex, paintId, wear, seed, teamId, nametag || null, stattrak);
       } else {
         const forma = `${defindex}-${selectedId}`;
-        updateSkin(forma, wear, seed, teamId, nametag || null, stattrak, stickers);
+        await updateSkin(forma, wear, seed, teamId, nametag || null, stattrak, stickers);
       }
       setIsModalOpen(false);
     });
   };
 
   const handleRemove = () => {
-    startTransition(() => {
-      removeItem(type, defindex, teamId);
+    startTransition(async () => {
+      await removeItem(type, defindex, teamId);
       setIsModalOpen(false);
     });
   };
