@@ -199,25 +199,25 @@ export default async function Home() {
             <LocaleSwitcher locale={locale} />
 
             {!steamid ? (
-              <Link
+              <a
                 href="/api/auth/steam"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-100 hover:bg-white text-neutral-900 font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:-translate-y-0.5"
               >
                 <LogIn className="w-5 h-5" />
                 {t.signIn}
-              </Link>
+              </a>
             ) : (
               <div className="flex items-center gap-4">
                 <div className="px-4 py-2 rounded-lg bg-neutral-800/50 border border-neutral-700 text-sm font-medium">
                   {steamid}
                 </div>
-                <Link
+                <a
                   href="/api/auth/logout"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-xl transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   {t.logout}
-                </Link>
+                </a>
               </div>
             )}
           </div>
