@@ -17,74 +17,93 @@ export async function updateSkin(
   stattrak?: boolean,
   stickers?: StickerSlot[]
 ) {
+  console.log(`[ACTION updateSkin] Called:`, { forma, wearStr, seedStr, team, nametag, stattrak });
   const steamid = await getSession();
-  if (!steamid) return;
+  console.log(`[ACTION updateSkin] steamid from session:`, steamid);
+  if (!steamid) {
+    console.warn(`[ACTION updateSkin] No steamid found, aborting.`);
+    return;
+  }
 
   const [type, id] = forma.split('-');
+  console.log(`[ACTION updateSkin] Parsed forma: type=${type}, id=${id}`);
 
-  if (type === 'knife') {
-    const locale = (await cookies()).get('locale')?.value || 'en';
-    const knifes = getKnifeTypes(locale);
-    const knifeId = parseInt(id, 10);
-    const knife = knifes[knifeId];
-    
-    if (knife && knife.weapon_name) {
-      const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM `wp_player_knife` WHERE steamid = ? AND weapon_team = ?", [steamid, team]);
+  try {
+    if (type === 'knife') {
+      const locale = (await cookies()).get('locale')?.value || 'en';
+      const knifes = getKnifeTypes(locale);
+      const knifeId = parseInt(id, 10);
+      const knife = knifes[knifeId];
       
-      if (rows.length > 0) {
-        await pool.query("UPDATE `wp_player_knife` SET `knife` = ? WHERE `steamid` = ? AND `weapon_team` = ?", [knife.weapon_name, steamid, team]);
-      } else {
-        await pool.query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(?, ?, ?)", [steamid, knife.weapon_name, team]);
-      }
-    }
-  } else {
-    const weaponDefIndex = parseInt(type, 10);
-    const paintId = parseInt(id, 10);
-    const wear = parseFloat(wearStr);
-    const seed = parseInt(seedStr, 10);
-
-    if (!isNaN(wear) && wear >= 0 && wear <= 1 && !isNaN(seed)) {
-      const stickerValues = [];
-      for (let i = 0; i < 5; i++) {
-        if (stickers && stickers[i] && stickers[i].id !== 0) {
-          stickerValues.push(serializeStickerSlot(stickers[i]));
+      if (knife && knife.weapon_name) {
+        console.log(`[ACTION updateSkin] Saving knife:`, knife.weapon_name);
+        const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM `wp_player_knife` WHERE steamid = ? AND weapon_team = ?", [steamid, team]);
+        
+        if (rows.length > 0) {
+          await pool.query("UPDATE `wp_player_knife` SET `knife` = ? WHERE `steamid` = ? AND `weapon_team` = ?", [knife.weapon_name, steamid, team]);
+          console.log(`[ACTION updateSkin] UPDATE knife success`);
         } else {
-          stickerValues.push('0;0;0;0;0;0;0');
+          await pool.query("INSERT INTO `wp_player_knife` (`steamid`, `knife`, `weapon_team`) VALUES(?, ?, ?)", [steamid, knife.weapon_name, team]);
+          console.log(`[ACTION updateSkin] INSERT knife success`);
         }
       }
+    } else {
+      const weaponDefIndex = parseInt(type, 10);
+      const paintId = parseInt(id, 10);
+      const wear = parseFloat(wearStr);
+      const seed = parseInt(seedStr, 10);
 
-      const nametagValue = nametag && nametag.trim() !== '' ? nametag.substring(0, 128) : null;
-      const stattrakValue = stattrak ? 1 : 0;
+      console.log(`[ACTION updateSkin] Parsed weapon: defIndex=${weaponDefIndex}, paintId=${paintId}, wear=${wear}, seed=${seed}`);
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT * FROM wp_player_skins WHERE steamid = ? AND weapon_defindex = ? AND weapon_team = ?",
-        [steamid, weaponDefIndex, team]
-      );
+      if (!isNaN(wear) && wear >= 0 && wear <= 1 && !isNaN(seed)) {
+        const stickerValues = [];
+        for (let i = 0; i < 5; i++) {
+          if (stickers && stickers[i] && stickers[i].id !== 0) {
+            stickerValues.push(serializeStickerSlot(stickers[i]));
+          } else {
+            stickerValues.push('0;0;0;0;0;0;0');
+          }
+        }
 
-      if (rows.length > 0) {
-        await pool.query(
-          `UPDATE wp_player_skins SET 
-            weapon_paint_id = ?, weapon_wear = ?, weapon_seed = ?,
-            weapon_nametag = ?, weapon_stattrak = ?,
-            weapon_sticker_0 = ?, weapon_sticker_1 = ?, weapon_sticker_2 = ?, weapon_sticker_3 = ?, weapon_sticker_4 = ?
-          WHERE steamid = ? AND weapon_defindex = ? AND weapon_team = ?`,
-          [paintId, wear, seed, nametagValue, stattrakValue,
-           stickerValues[0], stickerValues[1], stickerValues[2], stickerValues[3], stickerValues[4],
-           steamid, weaponDefIndex, team]
+        const nametagValue = nametag && nametag.trim() !== '' ? nametag.substring(0, 128) : null;
+        const stattrakValue = stattrak ? 1 : 0;
+
+        const [rows] = await pool.query<RowDataPacket[]>(
+          "SELECT * FROM wp_player_skins WHERE steamid = ? AND weapon_defindex = ? AND weapon_team = ?",
+          [steamid, weaponDefIndex, team]
         );
+
+        if (rows.length > 0) {
+          await pool.query(
+            `UPDATE wp_player_skins SET 
+              weapon_paint_id = ?, weapon_wear = ?, weapon_seed = ?,
+              weapon_nametag = ?, weapon_stattrak = ?,
+              weapon_sticker_0 = ?, weapon_sticker_1 = ?, weapon_sticker_2 = ?, weapon_sticker_3 = ?, weapon_sticker_4 = ?
+            WHERE steamid = ? AND weapon_defindex = ? AND weapon_team = ?`,
+            [paintId, wear, seed, nametagValue, stattrakValue,
+             stickerValues[0], stickerValues[1], stickerValues[2], stickerValues[3], stickerValues[4],
+             steamid, weaponDefIndex, team]
+          );
+          console.log(`[ACTION updateSkin] UPDATE skin success`);
+        } else {
+          await pool.query(
+            `INSERT INTO wp_player_skins 
+              (steamid, weapon_defindex, weapon_paint_id, weapon_wear, weapon_seed, weapon_team,
+               weapon_nametag, weapon_stattrak,
+               weapon_sticker_0, weapon_sticker_1, weapon_sticker_2, weapon_sticker_3, weapon_sticker_4) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [steamid, weaponDefIndex, paintId, wear, seed, team,
+             nametagValue, stattrakValue,
+             stickerValues[0], stickerValues[1], stickerValues[2], stickerValues[3], stickerValues[4]]
+          );
+          console.log(`[ACTION updateSkin] INSERT skin success`);
+        }
       } else {
-        await pool.query(
-          `INSERT INTO wp_player_skins 
-            (steamid, weapon_defindex, weapon_paint_id, weapon_wear, weapon_seed, weapon_team,
-             weapon_nametag, weapon_stattrak,
-             weapon_sticker_0, weapon_sticker_1, weapon_sticker_2, weapon_sticker_3, weapon_sticker_4) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [steamid, weaponDefIndex, paintId, wear, seed, team,
-           nametagValue, stattrakValue,
-           stickerValues[0], stickerValues[1], stickerValues[2], stickerValues[3], stickerValues[4]]
-        );
+        console.warn(`[ACTION updateSkin] Validation failed. wear isNaN? ${isNaN(wear)}, seed isNaN? ${isNaN(seed)}`);
       }
     }
+  } catch (err) {
+    console.error(`[ACTION updateSkin] DB ERROR:`, err);
   }
 
   revalidatePath('/');
